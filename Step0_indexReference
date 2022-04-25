@@ -1,0 +1,41 @@
+#!/bin/bash
+#SBATCH --job-name=index_refGenome
+#SBATCH --mail-type=ALL # Valid values: BEGIN, END, FAIL, REQUEUE and ALL.
+#SBATCH --mail-user=ngonzalez1@tulane.edu
+#SBATCH --output=/lustre/project/kferris/MimulusGuttatus_reference/indexed_reference.out
+#SBATCH --error=/lustre/project/kferris/MimulusGuttatus_reference/indexed_reference.err
+#SBATCH --time=0-01:30:00
+#SBATCH --cpus-per-task=2  #: Cpus per Task
+#SBATCH --nodes=1            #: Number of Nodes
+#SBATCH --ntasks-per-node=1  #: Number of Tasks per Node
+
+<<Note_toUser
+This script is intended to index a reference genome. The following script
+should send the output files to the 
+/lustre/project/kferris/MimulusGuttatus_reference folder.
+
+This script only ever has to be run once per reference genome. The
+lines below are commented out because they've already been used to
+index a reference genome.
+
+If you're bringing in a NEW reference genome add it below and when
+the job is done running, comment it out.
+Note_toUser
+
+
+### Load modules ###
+module load bwa
+
+
+### Set the working directory (where the output goes) ###
+cd lustre/project/kferris/MimulusGuttatus_reference
+
+### Indexing the reference genome ###
+#Only ever needs to be done once per reference
+
+#bwa index -a is /lustre/project/kferris/MimulusGuttatus_reference/v2.0/assembly/Mguttatus_256_v2.0.fa.gz
+#bwa index -a is /lustre/project/kferris/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa.gz
+
+
+### Unload mmodules ###
+module purge
