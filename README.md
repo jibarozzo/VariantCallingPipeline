@@ -32,6 +32,7 @@ This tutorial provides a step-by-step guide to process paired-end ddRAD data fro
 - Setup your HPC Cypress directory to download/upload the sequence files
 
 An example directory should look like this:
+```
 path/to/your/directory/
 ├── input_data/
 │ ├── raw_files/
@@ -53,7 +54,7 @@ path/to/your/directory/
 │ │ ├── process_slurm.sh
 │ │ ├── rmdup_slurm.sh
 │ │ └── ...
-
+```
 There will be multiple `working_files` directories. Each represents a multiplexed/pooled library or a "plate" if you will. 
 
 The `metadata` directory has all the information about your libraries. 
