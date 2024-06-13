@@ -64,20 +64,19 @@ The `metadata` directory has all the information about your libraries.
 #### Step 2: File Renaming and Organization
 
 - **Renaming Files:** Skip Step 1 in the Fishman Lab Protocol since Duke performs i7 demultiplexing. Rename your files as follows to match the required format:
-    
-	`mv CMD1_S19_L002_R1_001.fastq.gz CMD1.1.fastq.gz`
-    `mv CMD1_S13_L001_I1_001.fastq.gz CMD1-L001.i7.fastq.gz`
 
-    Ensure to make duplicates of the original files before renaming. For example, keep a file in a "RAW" directory.
+```
+ mv CMD1_S19_L002_R1_001.fastq.gz CMD1.1.fastq.gz
+mv CMD1_S13_L001_I1_001.fastq.gz CMD1-L001.i7.fastq.gz
+```
+    
+Ensure to make duplicates of the original files before renaming. For example, keep a file in a "RAW" directory.
 
 
 #### Step 3: Unzipping Files
 
 - **Unzipping Files for Processing:** Unzip only the `rmdup` files before proceeding to Step 3 using the `gunzip` command:
     
-    markdown
-    
-    Copy code
     
     `gunzip *.rmdup.*.fastq.gz`
     
@@ -90,9 +89,6 @@ The `metadata` directory has all the information about your libraries.
     - **Step 4:** Barcodes should be embedded within the cut site (e.g., `GGGGAAGAATGCA`).
 - **Cleaning Up Barcodes:** Remove hidden characters in the barcode file for `flip2BeRAD.py`:
     
-    less
-    
-    Copy code
     
     `sed 's/[^A-Za-z0-9_.;]//g' ddrad_barcode_seqs.txt > barcode_seqs.txt`
     
@@ -118,7 +114,7 @@ The `metadata` directory has all the information about your libraries.
 
 - **File Conversion:** If experiencing issues with executing Unix commands, convert files to Unix line breaks:
     
-    Copy code
+
     
     `dos2unix filename`
     
