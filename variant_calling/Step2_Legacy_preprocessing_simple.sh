@@ -59,10 +59,17 @@ Simple_Legacy_pre_processing_workflow
 
 echo "Start Job"
 
+#### GLOBAL VARIABLES ###
+WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC"
+SEQID="bar_mim3" # Read group identifier/Project name and date for bam header
+REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa" # Path to reference genome
+THREADS=20 # Number of threads to use
+TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
+PICARD="/share/apps/picard/2.20.7/picard.jar" # Path to picard
+OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/ # Path to directory where alignment files will be stored
+
 ### NAVIGATING TO THE DIRECTORY CONTAINING THE FASTQ FILES ###
 ### WD should be the directory containing the fastq files ###
-WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC"
-
 cd ${WD}
 
 ### ASSIGNING VARIABLES ###
@@ -97,14 +104,6 @@ HEADER=$(echo $R1 | cut -d "/" -f 10 | cut -d "." -f 1) # Retrieves first elemen
 
 echo ${SAMPLE}
 echo ${HEADER}
-
-# General pipeline variables
-SEQID="bar_mim3" # Project name and date for bam header
-REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa" # Path to reference genome
-THREADS=20 # Number of threads to use
-TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
-PICARD="/share/apps/picard/2.20.7/picard.jar" # Path to picard
-OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed # Path to directory where alignment files will be stored
 
 
 #####################################################################

@@ -22,7 +22,17 @@ module load java-openjdk
 ######################################################
 
 echo "Start Job"
-cd /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed
+
+### GLOBAL VARIABLES ###
+WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed"
+SEQID="bar_mim3" #project name and date for bam header
+REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa"
+THREADS=20
+TMPDIR="/lustre/project/svanbael/TMPDIR" #designated storage folders for temporary files (should be empty at end)
+PICARD="/share/apps/picard/2.20.7/picard.jar"
+
+### MOVE TO WORKING DIRECTORY ###
+cd ${WD}
 
 ### ASSIGNING VARIABLES ###
 P=$(find /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/* -type d \
@@ -33,11 +43,6 @@ SAMPLE=$(echo $P | cut -d "/" -f 11) #Retrieves sample name
 echo ${SAMPLE}
 
 
-SEQID="bar_mim3" #project name and date for bam header
-REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa"
-THREADS=20
-TMPDIR="/lustre/project/svanbael/TMPDIR" #designated storage folders for temporary files (should be empty at end)
-PICARD="/share/apps/picard/2.20.7/picard.jar"
 
 
 ### BAM DIAGNOSTICS ###

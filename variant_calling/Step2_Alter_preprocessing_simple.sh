@@ -73,13 +73,19 @@ Simple_Alter_pre_processing_workflow
 
 echo "Start Job"
 
+#### GLOBAL VARIABLES ###
+WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC"
+REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa" # Path to reference genome
+THREADS=20 # Number of threads to use
+TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
+PICARD="/share/apps/picard/2.20.7/picard.jar" # Path to picard
+OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/ # Path to directory where alignment files will be stored
+
 ### NAVIGATING TO THE DIRECTORY CONTAINING THE FASTQ FILES ###
 ### WD should be the directory containing the fastq files ###
-WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC"
-
 cd ${WD}
 
-### ASSIGNING VARIABLES ###
+### RETRIEVING SAMPLE NAMES AND ASSIGNING AS VARIABLES ###
 # Array 1-n represents n number of samples and SLURM_ARRAY_TASK_ID represents elements in that array.
 # The following line allows us to link the elements of the array with the FW and RV read files (R1/R2).
 # The sort step should sort samples alphanumerically.
@@ -112,15 +118,6 @@ HEADER=$(echo $R1 | cut -d "/" -f 10 | cut -d "." -f 1) # Retrieves first elemen
 echo ${SAMPLE}
 echo ${HEADER}
 
-# General pipeline variables
-SEQID="bar_mim3" # Project name and date for bam header
-REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa" # Path to reference genome
-THREADS=20 # Number of threads to use
-TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
-PICARD="/share/apps/picard/2.20.7/picard.jar" # Path to picard
-OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/ # Path to directory where alignment files will be stored
-
-
 ####################################################################################################
 ### Alternative Pipeline for Alignment with BWA, SAMTOOLS, and PICARD for Read Group Information ###
 ####################################################################################################
@@ -130,7 +127,8 @@ OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatic
 ##################################################################################################
 # Adapted from @bergcollete's GitHub: YNP_GWAS/scripts/YNP4alignment.sh 
 
-### Variables for Read group information
+### VARIABLES FOR READ GROUP INFORMATION ###
+RGID= "bar_mim3" # Read group identifier/project name
 RGLB="lib1" # Library name (could be anything)
 RGPL="ILLUMINA" # Sequencing platform
 RGPU="unit1" # Generic identifier for the platform unit
@@ -157,6 +155,7 @@ java -jar $PICARD AddOrReplaceReadGroups \
     -INPUT ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
     -OUTPUT ${HEADER}/${SAMPLE}_aln_pe_fm_rg_sorted.bam \
     -RGSM ${SAMPLE} \
+    -RGID $RGID \
     -RGLB $RGLB \
     -RGPL $RPGL \
     -RGPU $RGPU \

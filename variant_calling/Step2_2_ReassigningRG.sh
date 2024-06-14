@@ -21,8 +21,14 @@ module load java-openjdk
 
 echo "Start Job"
 
-### CHANGE DIRECTORY TO WHERE THE FILES ARE LOCATED ###
+#### GLOBAL VARIABLES ###
 WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/"
+REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa" # Path to reference genome
+THREADS=20 # Number of threads to use
+TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
+PICARD="/share/apps/picard/2.20.7/picard.jar" # Path to picard
+
+### CHANGE DIRECTORY TO WHERE THE BAM FILES ARE LOCATED ###
 cd ${WD}
 
 ### ASSIGNING VARIABLES ###
@@ -35,15 +41,11 @@ HEADER=$(echo $P | cut -d "/" -f 11)
 echo ${SAMPLE}
 
 
-SEQID="bar_mim3" # Project name and date for bam header
-REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa"
-THREADS=20
-TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
-PICARD="/share/apps/picard/2.20.7/picard.jar"
-
+### VARIABLES FOR READ GROUP INFORMATION ###
+RGID= "bar_mim3" # Read group identifier/project name
 RGLB="lib1" # Library name (could be anything)
 RGPL="ILLUMINA" # Sequencing platform
-RGPU="UNKNOWN" # Generic identifier for the platform unit
+RGPU="unit1" # Generic identifier for the platform unit
 
 # This tool enables the user to either replace all read groups in the input file or \
 # to add a read group to each read that does not have a read group. Which could be the source of errors.
@@ -52,7 +54,7 @@ echo "Adding or replacing read group information"
  java -jar $PICARD AddOrReplaceReadGroups \
        -I ${HEADER}/${SAMPLE}_markdup.bam \
        -O ${HEADER}/${SAMPLE}_markdup_rrg.bam \
-       -RGID ${SEQID} \
+       -RGID $RGID \
        -RGLB $RGLB \
        -RGPL $RGPL \
        -RGPU $RGPU \

@@ -54,7 +54,7 @@ GATK_VariantCalling
 echo "Start Job"
 echo "Start Consolidation"
 
-### ASSIGNING VARIABLES ###
+### GLOBAL VARIABLES ###
 WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/4_variant_calling/3_Genotyped_GVCFs" # Path to working directory
 GDBWORKSPACE="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/4_variant_calling/2_GenomicsDB_data_store" # Path to GenomicsDB workspace
 INTLIST="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/intervals.list" # Path to interval list
@@ -79,7 +79,7 @@ gatk --java-options "-Xmx4g -Xms4g" \
 	--tmp-dir $TMPDIR \
 	--reader-threads $THREADS
 
-#echo "End Consolidation"
+echo "End Consolidation"
 #################################################################################################
 
 echo "Start Joint Genotyping"

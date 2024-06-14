@@ -45,7 +45,7 @@ GATK_VariantCalling_simple
 
 echo "Start Job"
 
-### ASSIGNING VARIABLES ###
+### GLOBAL VARIABLES ###
 INPUT_DIR="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/" # Path to directory containing bam files
 OUTPUT_DIR="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/4_variant_calling/1_GVCF_files" # Path to directory where gvcf files will be stored
 TMPDIR="/lustre/project/svanbael/TMPDIR" # Path to temporary directory
@@ -58,7 +58,7 @@ P=$(find ${INPUT_DIR}* -type d \
 SAMPLE=$(echo $P | cut -d "/" -f 11) # Retrieves sample name
 
 ### SETTING WORKING DIRECTORY WHERE VARIANT CALLING OUTPUTS WILL GO ###
-cd $OUTPUT_DIR
+cd ${OUTPUT_DIR}
 
 #### HaplotypeCaller
 gatk --java-options "-Xmx8g" HaplotypeCaller --tmp-dir $TMPDIR \ 
