@@ -4,7 +4,7 @@
 #SBATCH --output=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_2_reassignment/output/bam_reassigned_%A_%a.out
 #SBATCH --error=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_2_reassignment/errors/bam_reassigned_%A_%a.err
 #SBATCH --qos=normal
-#SBATCH --time=24:00:00
+#SBATCH --time=0-24:00:00
 #SBATCH --mem=256000 #Up to 256000, the maximum increases queue time
 #SBATCH --nodes=1            #: Number of Nodes
 #SBATCH --ntasks-per-node=1  #: Number of Tasks per Node
@@ -20,10 +20,13 @@ module load java-openjdk
 ###################################################################
 
 echo "Start Job"
-cd /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed
+
+### CHANGE DIRECTORY TO WHERE THE FILES ARE LOCATED ###
+WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/"
+cd ${WD}
 
 ### ASSIGNING VARIABLES ###
-P=$(find /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/* -type d \
+P=$(find ${WD}* -type d \
     | sort \
     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
 
@@ -47,14 +50,14 @@ RGPU="UNKNOWN" # Generic identifier for the platform unit
 echo "Adding or replacing read group information"
 
  java -jar $PICARD AddOrReplaceReadGroups \
-       I=${HEADER}/${SAMPLE}_markdup.bam \
-       O=${HEADER}/${SAMPLE}_markdup_rrg.bam \
-       RGID=${SEQID} \
-       RGLB=$RGLB \
-       RGPL=$RGPL \
-       RGPU=$RGPU \
-       RGSM= ${SAMPLE}
-       VALIDATION_STRINGENCY=STRICT
+       -I ${HEADER}/${SAMPLE}_markdup.bam \
+       -O ${HEADER}/${SAMPLE}_markdup_rrg.bam \
+       -RGID ${SEQID} \
+       -RGLB $RGLB \
+       -RGPL $RGPL \
+       -RGPU $RGPU \
+       -RGSM ${SAMPLE} \
+       -VALIDATION_STRINGENCY LENIENT
 
 
 module purge
