@@ -1,15 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=BAR_preproces
-#SBATCH --mail-user=baponterolon@tulane.edu
 #SBATCH --output=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/preprocessingout/pre-processing_%A_%a.out
-#SBATCH --error=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/preprocessingerr/pre-processing_%A_%a.err
+#SBATCH --error=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/preprocessingerror/pre-processing_%A_%a.err
 #SBATCH --qos=normal
 #SBATCH --time=24:00:00
 #SBATCH --mem=256000 #Up to 256000, the maximum increases queue time
 #SBATCH --nodes=1            #: Number of Nodes
 #SBATCH --ntasks-per-node=1  #: Number of Tasks per Node
 #SBATCH --cpus-per-task=20   #: Number of threads per task
-#SBATCH --array=1-2  # Job array (1-n) when n is number of unique samples that came off the sequencer. 499 total
+#SBATCH --array=1-453  # Job array (1-n) when n is number of unique samples that came off the sequencer. 499 total BUT 46 samples in BAR29 missing
 
 
 ### LOAD MODULES ###
@@ -18,19 +17,16 @@ module load samtools/1.16.1
 module load java-openjdk/1.8.0
 
 #####################################################################
-<<Simple_pre_processing_workflow
+<<Simple_Legacy_pre_processing_workflow
 SIMPLE WORKFLOW- samples not split across lanes
 Written in spring 2022 by Natalie Gonzalez
 
-Modified by BAR 2024-06-14
+Modified by BAR 2024-06-03
+
 Minor changes include:
-- Using samtools v.1.16.1 as opposed to v.1.10
-- bwa/0.7.17 as opposed to bwa
-- java-openjdk/1.8.0 as opposed to java-openjdk
-
-Major changes include:
-- Optimizing the alignment workflow by piping the output of samtools `sort` directly into `fixmate`.
-
+    - Using samtools v.1.16.1 as opposed to v.1.10
+    - bwa/0.7.17 as opposed to bwa
+    - java-openjdk/1.8.0 as opposed to java-openjdk
 
 This script is designed to prepare samples for GATK varient calling. 
 It begins with sequence files in seqdata.fq.gz or seqdata.fq format
@@ -58,7 +54,7 @@ Output files:${SAMPLE}_merged.bam
                 ${SAMPLE}_markdup.bam.bai
                 ${SAMPLE}_markdup.bam.flagstat.txt
 
-Simple_pre_processing_workflow
+Simple_Legacy_pre_processing_workflow
 #####################################################################
 
 echo "Start Job"
@@ -83,16 +79,9 @@ R1=$(find ${WD} \
     | sort \
     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
 R2=$(find ${WD} \
-    | grep $REV_EXT\
+    | grep $REV_EXT \
     | sort \
     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
-
-# R1=$(find /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC/OPN_9_L_POOL.1.fq.gz \
-#     | sort \
-#     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
-# R2=$(find /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC/OPN_9_L_POOL.2.fq.gz \
-#     | sort \
-#     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
 
 
 echo ${R1}
@@ -115,7 +104,7 @@ REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/Mimu
 THREADS=20 # Number of threads to use
 TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
 PICARD="/share/apps/picard/2.20.7/picard.jar" # Path to picard
-OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/ # Path to directory where alignment files will be stored
+OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed # Path to directory where alignment files will be stored
 
 
 #####################################################################
@@ -124,7 +113,7 @@ This BWA aligmnent uses some of Caiti Heil's workflow from the
 runSeqAlignVarientCall_20190130.sh script which I have stored
 on my local machine under my desktop "Ferris Lab Materials" folder.
 In an email conversation she mentioned that she did not trim the 
-sequencing data because her lab got better alignments when they didn't trim.
+sequencing data because her lab got better alignments when they didn'trm * trim.
 I've combined some of her methods with the suggested workflow in:
 https://eriqande.github.io/eca-bioinf-handbook/alignment-of-sequence-data-to-a-reference-genome-and-associated-steps.html
 BWA_Alignment
@@ -133,6 +122,7 @@ BWA_Alignment
 ### SETTING WORKING DIRECTORY WHERE BWA OUTPUTS WILL GO ###
 # Remember to make "alignments_untrimmed" folder
 cd ${OUTPUT_DIR}
+
 mkdir ${HEADER}  # Makes a directory for each biological sample.
 
 ### RUNNING THE ALIGNMENT ON UNTRIMMED DATA ###
@@ -147,21 +137,14 @@ echo "Start Alignment"
 #################################################################
 ### BWA alignment and SAMTOOLS use for read group information ###
 #################################################################
-#ORIGINAL CODE
-bwa mem -R '@RG\tID:'${SEQID}'\tSM:'${SAMPLE}'\tLB:lib1' -t ${THREADS} ${REF} ${R1} ${R2} \  # Aligning and adding read group information
-| samtools view -hb -@ ${THREADS} - \
-| samtools sort -n -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_sorted.bam \
-| samtools fixmate -rm -@ ${THREADS} ${HEADER}/${SAMPLE}_aln_pe_sorted.bam - \
-| samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam
 
-# OPTIMIZED CODE -BAR 2024-05-22
-# We avoid unnecessary writing and reading from disk by piping the output of samtools `sort` directly into `fixmate`.
-# bwa mem -R '@RG\tID:'${SEQID}'\tSM:'${SAMPLE}'\tLB:lib1' -t ${THREADS} ${REF} ${R1} ${R2} \
-# | samtools view -hb -@ ${THREADS} - \
-# | samtools sort -n -T $TMPDIR -@ ${THREADS} - \
-# | samtools fixmate -rm -@ ${THREADS} ${HEADER}/${SAMPLE}_aln_pe_sorted.bam - \
-# | samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam
+bwa mem -R '@RG\tID:'${SEQID}'\tSM:'${SAMPLE}'\tLB:lib1' -t ${THREADS} ${REF} \
+   ${R1} ${R2} \
+ | samtools view -hb -@ ${THREADS} - | samtools sort -n -T $TMPDIR -@ ${THREADS} - -o ${SAMPLE}/${SAMPLE}_aln_pe_sorted.bam
+samtools fixmate -rm -@ ${THREADS} ${SAMPLE}/${SAMPLE}_aln_pe_sorted.bam - \
+ | samtools sort -T $TMPDIR -@ ${THREADS} - -o ${SAMPLE}/${SAMPLE}_aln_pe_fm_sorted.bam
 
+echo "End Alignment"
 
 ### MARK AND REMOVE DUPLICATE READS ###
 echo "Marking and removing duplicate reads"
@@ -194,5 +177,3 @@ echo "End Job"
 ###################################################################################################
 ### END OF LEGACY PIPELINE FOR BWA ALIGNMENT AND SAMTOOLS USE FOR READ GROUP INFORMATION ###
 ###################################################################################################
-
-

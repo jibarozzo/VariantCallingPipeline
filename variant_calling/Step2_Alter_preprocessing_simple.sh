@@ -2,14 +2,14 @@
 #SBATCH --job-name=BAR_preproces
 #SBATCH --mail-user=baponterolon@tulane.edu
 #SBATCH --output=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/preprocessingout/pre-processing_%A_%a.out
-#SBATCH --error=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/preprocessingerr/pre-processing_%A_%a.err
+#SBATCH --error=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/preprocessingerror/pre-processing_%A_%a.err
 #SBATCH --qos=normal
 #SBATCH --time=24:00:00
 #SBATCH --mem=256000 #Up to 256000, the maximum increases queue time
 #SBATCH --nodes=1            #: Number of Nodes
 #SBATCH --ntasks-per-node=1  #: Number of Tasks per Node
 #SBATCH --cpus-per-task=20   #: Number of threads per task
-#SBATCH --array=1-2  # Job array (1-n) when n is number of unique samples that came off the sequencer. 499 total
+#SBATCH --array=1-474  # Job array (1-n) when n is number of unique samples that came off the sequencer. 499 total
 
 
 ### LOAD MODULES ###
@@ -97,13 +97,6 @@ R2=$(find ${WD} \
     | sort \
     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
 
-# R1=$(find /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC/OPN_9_L_POOL.1.fq.gz \
-#     | sort \
-#     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
-# R2=$(find /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC/OPN_9_L_POOL.2.fq.gz \
-#     | sort \
-#     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
-
 
 echo ${R1}
 echo ${R2}
@@ -140,42 +133,65 @@ OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatic
 ### Variables for Read group information
 RGLB="lib1" # Library name (could be anything)
 RGPL="ILLUMINA" # Sequencing platform
-RGPU="UNKNOWN" # Generic identifier for the platform unit
+RGPU="unit1" # Generic identifier for the platform unit
 
-### Map reads to the genome
-echo "Aligning ${SAMPLE} with bwa mem"
-bwa mem -t $t ${REF} ${R1} ${R2} | \
+### SETTING WORKING DIRECTORY WHERE BWA OUTPUTS WILL GO ###
+# Make alignments_untrimmed folder
+cd ${OUTPUT_DIR}
+mkdir ${HEADER}  #makes a directory for each biological sample.
 
-### Quality filter and sort sam, making a bam file
-echo "Making bam, quality filtering, and sorting for ${SAMPLE}"
-samtools view -hb -@ ${THREADS} -q 30 - | \ # Quality filter informed by multiqc report
-samtools sort -n -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_sorted.bam | \ # Sort
-samtools fixmate -rm -@ ${THREADS} ${HEADER}/${SAMPLE}_aln_pe_sorted.bam - | \ # Fixmate
-samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \ 
+
+### Map reads to the genome AND Quality filter and sort sam, making a bam file
+echo "Aligning bwa mem quality filtering, and sorting for ${SAMPLE}"
+
+bwa mem -t ${THREADS} ${REF} ${R1} ${R2} | \
+samtools view -hb -@ ${THREADS} - | \
+samtools sort -n -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_sorted.bam | \
+samtools fixmate -rm -@ ${THREADS} ${HEADER}/${SAMPLE}_aln_pe_sorted.bam - | \
+samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam
 
 ### Add read groups
 echo "Adding read group information to ${SAMPLE}"
+
 java -jar $PICARD AddOrReplaceReadGroups \
-    -I ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
-    -O ${HEADER}/${SAMPLE}_aln_pe_fm_rg_sorted.bam \
-    -RGSM ${rdgrp} \
-    -RGLB NEBNext \
-    -RGPL Illumina \
-    -RGPU UNKNOWN \
+    -INPUT ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
+    -OUTPUT ${HEADER}/${SAMPLE}_aln_pe_fm_rg_sorted.bam \
+    -RGSM ${SAMPLE} \
+    -RGLB $RGLB \
+    -RGPL $RPGL \
+    -RGPU $RGPU \
     -VALIDATION_STRINGENCY LENIENT # adds read groups
 
 echo "End Alignment"
+
+### MARK AND REMOVE DUPLICATE READS ###
+echo "Marking and removing duplicate reads"
+
+java -jar $PICARD MarkDuplicates \
+     -INPUT ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
+     -OUTPUT ${HEADER}/${SAMPLE}_markdup.bam \
+     -METRICS_FILE ${HEADER}/${SAMPLE}_dup_metrics.txt \
+     -ASSUME_SORTED true \
+     -REMOVE_DUPLICATES true \
+     -VALIDATION_STRINGENCY LENIENT \
+     -TMP_DIR $TMPDIR
+
+echo "End Marking and removing duplicate reads"
 
 ### INDEXING THE BAM FILE & FLAG STATS##
 echo "Indexing the bam file and calculating flag stats"
 
 samtools index -@ ${THREADS} ${HEADER}/${SAMPLE}_markdup.bam
 
+echo "End Indexing"
+
 ### LOOKING AT ALIGNMENT AGAIN ###
 ### `flagstat` counts the number of alignments for each FLAG type and calculates and prints statistics
+echo "Calculating flag stats"
 samtools flagstat -@ ${THREADS} ${HEADER}/${SAMPLE}_markdup.bam \
    > ${HEADER}/${SAMPLE}_markdup.bam.flagstat.txt
 
+echo "End Flag Stats"
 
 module purge
 echo "End Job"
