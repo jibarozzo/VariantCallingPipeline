@@ -18,7 +18,7 @@ REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/Mimu
 THREADS=20 # Number of threads to use
 TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
 PICARD="/share/apps/picard/2.20.7/picard.jar" # Path to picard
-OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/ # Path to directory where alignment files will be stored
+OUTPUT_DIR="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/" # Path to directory where alignment files will be stored
 
 ```
 
