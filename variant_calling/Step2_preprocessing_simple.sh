@@ -20,6 +20,7 @@ module load java-openjdk/1.8.0
 #####################################################################
 <<Simple_pre_processing_workflow
 SIMPLE WORKFLOW- samples not split across lanes
+Written in spring 2022 by Natalie Gonzalez
 
 Modified by BAR 2024-06-03
 Major changes include:
@@ -63,19 +64,28 @@ Simple_pre_processing_workflow
 #####################################################################
 
 echo "Start Job"
-cd /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC
+
+### NAVIGATING TO THE DIRECTORY CONTAINING THE FASTQ FILES ###
+### WD should be the directory containing the fastq files ###
+WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC"
+
+cd ${WD}
 
 ### ASSIGNING VARIABLES ###
 # Array 1-n represents n number of samples and SLURM_ARRAY_TASK_ID represents elements in that array.
 # The following line allows us to link the elements of the array with the FW and RV read files (R1/R2).
 # The sort step should sort samples alphanumerically.
 # Note: the find command searches recursively, grep command selects either read 1 or 2.
-R1=$(find /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC \
-    | grep 1.fq.gz \
+
+FOR_EXT="1.fq.gz" #forward read extension
+REV_EXT="2.fq.gz" #reverse read extension
+
+R1=$(find ${WD} \
+    | grep $FOR_EXT \
     | sort \
     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
-R2=$(find /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC \
-    | grep 2.fq.gz \
+R2=$(find ${WD} \
+    | grep $REV_EXT\
     | sort \
     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
 
@@ -101,16 +111,14 @@ HEADER=$(echo $R1 | cut -d "/" -f 10 | cut -d "." -f 1) # Retrieves first elemen
 echo ${SAMPLE}
 echo ${HEADER}
 
-SEQID="bar_mim3" #project name and date for bam header
-REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa"
-THREADS=20
-TMPDIR="/lustre/project/svanbael/TMPDIR" #designated storage folders for temporary files (should be empty at end)
-PICARD="/share/apps/picard/2.20.7/picard.jar"
+# General pipeline variables
+SEQID="bar_mim3" # Project name and date for bam header
+REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa" # Path to reference genome
+THREADS=20 # Number of threads to use
+TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
+PICARD="/share/apps/picard/2.20.7/picard.jar" # Path to picard
+OUTPUT_DIR=/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/ # Path to directory where alignment files will be stored
 
-### Read group information
-RGLB="lib1" # Library name (could be anything)
-RGPL="ILLUMINA" # Sequencing platform
-RGPU="UNKNOWN" # Generic identifier for the platform unit
 
 #####################################################################
 <<BWA_Alignment
@@ -125,23 +133,28 @@ BWA_Alignment
 #####################################################################
 
 ### SETTING WORKING DIRECTORY WHERE BWA OUTPUTS WILL GO ###
-# Make alignments_untrimmed folder
-cd /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed
-mkdir ${HEADER}  #makes a directory for each biological sample.
+# Remember to make "alignments_untrimmed" folder
+cd ${OUTPUT_DIR}
+mkdir ${HEADER}  # Makes a directory for each biological sample.
 
 ### RUNNING THE ALIGNMENT ON UNTRIMMED DATA ###
 #fixmate -r flag removes unaligned reads
 echo "Start Alignment"
 
+
+###################################################################################################
+################## Ferris Legacy Pipeline for BWA alignment and SAMTOOLS use ######################
+###################################################################################################
+
 #################################################################
 ### BWA alignment and SAMTOOLS use for read group information ###
 #################################################################
 #ORIGINAL CODE
-#bwa mem -R '@RG\tID:'${SEQID}'\tSM:'${SAMPLE}'\tLB:lib1' -t ${THREADS} ${REF} ${R1} ${R2} \  # Aligning and adding read group information
-#| samtools view -hb -@ ${THREADS} - \
-#| samtools sort -n -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_sorted.bam \
-#| samtools fixmate -rm -@ ${THREADS} ${HEADER}/${SAMPLE}_aln_pe_sorted.bam - \
-#| samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam
+bwa mem -R '@RG\tID:'${SEQID}'\tSM:'${SAMPLE}'\tLB:lib1' -t ${THREADS} ${REF} ${R1} ${R2} \  # Aligning and adding read group information
+| samtools view -hb -@ ${THREADS} - \
+| samtools sort -n -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_sorted.bam \
+| samtools fixmate -rm -@ ${THREADS} ${HEADER}/${SAMPLE}_aln_pe_sorted.bam - \
+| samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam
 
 # OPTIMIZED CODE -BAR 2024-05-22
 # We avoid unnecessary writing and reading from disk by piping the output of samtools `sort` directly into `fixmate`.
@@ -152,38 +165,9 @@ echo "Start Alignment"
 # | samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam
 
 
-##################################################################################################
-### Allignment with BWA, quality control with SAMTOOLS, and read group information with PICARD ###
-##################################################################################################
-# Adapted from @bergcollete's GitHub: YNP_GWAS/scripts/YNP4alignment.sh 
-
-
-### Map reads to the genome
-echo "Aligning ${SAMPLE} with bwa mem"
-bwa mem -t $t ${REF} ${R1} ${R2} | \
-
-### Quality filter and sort sam, making a bam file
-echo "Making bam, quality filtering, and sorting for ${SAMPLE}"
-samtools sort -n -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_sorted.bam | \
-samtools fixmate -rm -@ ${THREADS} ${HEADER}/${SAMPLE}_aln_pe_sorted.bam - | \
-samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
-
-### Add read groups
-echo "Adding read group information to ${SAMPLE}"
-java -jar /home/thom_nelson/opt/picard.jar AddOrReplaceReadGroups \
-    INPUT=${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
-    OUTPUT=${HEADER}/${SAMPLE}_aln_pe_fm_rg_sorted.bam \
-    RGSM=${rdgrp} \
-    RGLB=NEBNext \
-    RGPL=Illumina \
-    RGPU=UNKNOWN \
-    VALIDATION_STRINGENCY=LENIENT # adds read groups
-
-echo "End Alignment"
-##################################################################################################
-
 ### MARK AND REMOVE DUPLICATE READS ###
 echo "Marking and removing duplicate reads"
+
 java -jar $PICARD MarkDuplicates \
      INPUT=${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
      OUTPUT=${HEADER}/${SAMPLE}_markdup.bam \
@@ -194,8 +178,10 @@ java -jar $PICARD MarkDuplicates \
      TMP_DIR=$TMPDIR
 
 echo "End Marking and removing duplicate reads"
-### INDEXING THE BAM FILE & FLAG STATS###
+
+### INDEXING THE BAM FILE & FLAG STATS##
 echo "Indexing the bam file and calculating flag stats"
+
 samtools index -@ ${THREADS} ${HEADER}/${SAMPLE}_markdup.bam
 
 ### LOOKING AT ALIGNMENT AGAIN ###
@@ -206,3 +192,69 @@ samtools flagstat -@ ${THREADS} ${HEADER}/${SAMPLE}_markdup.bam \
 
 module purge
 echo "End Job"
+
+###################################################################################################
+### END OF LEGACY PIPELINE FOR BWA ALIGNMENT AND SAMTOOLS USE FOR READ GROUP INFORMATION ###
+###################################################################################################
+
+
+
+####################################################################################################
+### Alternative Pipeline for Alignment with BWA, SAMTOOLS, and PICARD for Read Group Information ###
+####################################################################################################
+<<BWA_Alternative
+This pipeline is adapted from @bergcollete's GitHub: YNP_GWAS/scripts/YNP4alignment.sh
+As opposed to the Legacy pipeline, which assings read group information with `bwa`, this one uses `bwa mem` for alignment, 
+`samtools` for quality control, and `picard` for read group information. 
+BWA_Alternative
+
+##################################################################################################
+### Allignment with BWA, quality control with SAMTOOLS, and read group information with PICARD ###
+##################################################################################################
+# Adapted from @bergcollete's GitHub: YNP_GWAS/scripts/YNP4alignment.sh 
+
+### Variables for Read group information
+RGLB="lib1" # Library name (could be anything)
+RGPL="ILLUMINA" # Sequencing platform
+RGPU="UNKNOWN" # Generic identifier for the platform unit
+
+### Map reads to the genome
+echo "Aligning ${SAMPLE} with bwa mem"
+bwa mem -t $t ${REF} ${R1} ${R2} | \
+
+### Quality filter and sort sam, making a bam file
+echo "Making bam, quality filtering, and sorting for ${SAMPLE}"
+samtools view -hb -@ ${THREADS} -q 29 - | \ # Quality filter
+samtools sort -n -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_sorted.bam | \ # Sort
+samtools fixmate -rm -@ ${THREADS} ${HEADER}/${SAMPLE}_aln_pe_sorted.bam - | \ # Fixmate
+samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \ 
+
+### Add read groups
+echo "Adding read group information to ${SAMPLE}"
+java -jar $PICARD AddOrReplaceReadGroups \
+    INPUT=${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
+    OUTPUT=${HEADER}/${SAMPLE}_aln_pe_fm_rg_sorted.bam \
+    RGSM=${rdgrp} \
+    RGLB=NEBNext \
+    RGPL=Illumina \
+    RGPU=UNKNOWN \
+    VALIDATION_STRINGENCY=LENIENT # adds read groups
+
+echo "End Alignment"
+
+### INDEXING THE BAM FILE & FLAG STATS##
+echo "Indexing the bam file and calculating flag stats"
+
+samtools index -@ ${THREADS} ${HEADER}/${SAMPLE}_markdup.bam
+
+### LOOKING AT ALIGNMENT AGAIN ###
+### `flagstat` counts the number of alignments for each FLAG type and calculates and prints statistics
+samtools flagstat -@ ${THREADS} ${HEADER}/${SAMPLE}_markdup.bam \
+   > ${HEADER}/${SAMPLE}_markdup.bam.flagstat.txt
+
+
+module purge
+echo "End Job"
+###########################################################################################################
+### END OF ALTERNATIVE PIPELINE FOR ALIGNMENT WITH BWA, SAMTOOLS, AND PICARD FOR READ GROUP INFORMATION ###
+###########################################################################################################

@@ -12,14 +12,19 @@
 
 
 ### LOAD MODULES ###
-module load samtools/1.10
+module load samtools/1.16.1
 module load gatk/4.1.8.1
 module load java-openjdk/1.8.0
 
 #####################################################################
 <<GATK_VariantCalling_simple
-This script uses the gatk toolkit version gatk/4.1.8.1 and
-was written in spring 2022 by Natalie Gonzalez
+This script uses the gatk toolkit version gatk/4.1.8.1.
+Written in spring 2022 by Natalie Gonzalez
+
+Modified by BAR 2024-06-13
+Minor modifications:
+- Updated samtools from version 1.10 to 1.16.1
+- Assigned variables for the path to the reference genome and the temporary directory.
 
 This is part 1 of the gatk variant calling process. This script
         calls the gatk HaplotypeCaller in GVCF mode, producing a vcf
@@ -41,22 +46,26 @@ GATK_VariantCalling_simple
 echo "Start Job"
 
 ### ASSIGNING VARIABLES ###
-P=$(find /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/* -type d \
+INPUT_DIR="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/" # Path to directory containing bam files
+OUTPUT_DIR="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/4_variant_calling/1_GVCF_files" # Path to directory where gvcf files will be stored
+TMPDIR="/lustre/project/svanbael/TMPDIR" # Path to temporary directory
+REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa" # Path to reference genome
+
+P=$(find ${INPUT_DIR}* -type d \
     | sort \
     | awk -v line=${SLURM_ARRAY_TASK_ID} 'line==NR')
 
-# returns path: /lustre/project/kferris/Caroline_Dong/F2WY/3_preprocessing_TOLgenome/alignments_untrimmed/${SAMPLE}
-SAMPLE=$(echo $P | cut -d "/" -f 11) #Retrieves sample name
+SAMPLE=$(echo $P | cut -d "/" -f 11) # Retrieves sample name
 
 ### SETTING WORKING DIRECTORY WHERE VARIANT CALLING OUTPUTS WILL GO ###
-cd /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/4_variant_calling/1_GVCF_files
+cd $OUTPUT_DIR
 
 #### HaplotypeCaller
-gatk --java-options "-Xmx8g" HaplotypeCaller --tmp-dir /lustre/project/svanbael/TMPDIR \
-   --reference /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa\
-   --input /lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/3_preprocessing/alignments_untrimmed/${SAMPLE}/${SAMPLE}_markdup.bam\
-   --output ${SAMPLE}.g.vcf.gz\
-   --emit-ref-confidence GVCF\
+gatk --java-options "-Xmx8g" HaplotypeCaller --tmp-dir $TMPDIR \ 
+   --reference $REF \
+   --input ${INPUT_DIR}${SAMPLE}/${SAMPLE}_markdup.bam \
+   --output ${SAMPLE}.g.vcf.gz \
+   --emit-ref-confidence GVCF \
    --sample-name ${SAMPLE}
 
 
