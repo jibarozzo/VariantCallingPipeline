@@ -4,10 +4,7 @@ The current, Ferris Legacy, workflow is as follows:
 
 ```mermaid
 graph TD
-
     A[Step1] --> B[Step2] --> C[Step3] --> D[Step4] 
-    
-
 ```
 
 
@@ -15,16 +12,11 @@ The Alternative workflow is as follows:
 
 ```mermaid
 graph TD
-
     A[Step1] --> B[Step2] --> T
-
         subgraph Diagnostic
         T(Step 2_1) --> X(Step 2_2) --> Y(Step 2_3)
-
     end
  B .-> C
     Y --> C
-    C[Step3] --> D[Step4] --> E[Step5]
-
-    
+    C[Step3] --> D[Step4]    
 ```
