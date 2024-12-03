@@ -38,8 +38,8 @@ This script is designed to prepare samples for GATK varient calling.
 It begins with sequence files in seqdata.fq.gz or seqdata.fq format.
 
 As opposed to the Legacy pipeline, which assigns read group information
-with `bwa`, this one uses `bwa mem` for alignment, `samtools` for quality control, 
-and `picard` for read group information. 
+with bwa, this one uses bwa mem for alignment, samtools for quality control, 
+and picard for read group information. 
 
 The workflow is as follows:
     -Perform the alignment with bwa -mem
@@ -75,6 +75,7 @@ echo "Start Job"
 
 #### GLOBAL VARIABLES ###
 WD="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/ddRAD/2_fastQC"
+SEQID="bar_mim3" # Read group identifier/Project name and date for bam header
 REF="/lustre/project/svanbael/bolivar/Mimulus_sequences/mim3_bioinformatics/MimulusGuttatus_reference/MguttatusTOL_551_v5.0.fa" # Path to reference genome
 THREADS=20 # Number of threads to use
 TMPDIR="/lustre/project/svanbael/TMPDIR" # Designated storage folders for temporary files (should be empty at end)
@@ -128,7 +129,7 @@ echo ${HEADER}
 # Adapted from @bergcollete's GitHub: YNP_GWAS/scripts/YNP4alignment.sh 
 
 ### VARIABLES FOR READ GROUP INFORMATION ###
-RGID= "bar_mim3" # Read group identifier/project name
+RGID=${SEQID} # Read group identifier/project name
 RGLB="lib1" # Library name (could be anything)
 RGPL="ILLUMINA" # Sequencing platform
 RGPU="unit1" # Generic identifier for the platform unit
@@ -142,7 +143,7 @@ mkdir ${HEADER}  #makes a directory for each biological sample.
 ### Map reads to the genome AND Quality filter and sort sam, making a bam file
 echo "Aligning bwa mem quality filtering, and sorting for ${SAMPLE}"
 
-bwa mem -t ${THREADS} ${REF} ${R1} ${R2} | \
+bwa mem -R '@RG\tID:'${SEQID}'\tSM:'${SAMPLE}'\tLB:lib1' -t ${THREADS} ${REF} ${R1} ${R2} | \
 samtools view -hb -@ ${THREADS} - | \
 samtools sort -n -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_sorted.bam | \
 samtools fixmate -rm -@ ${THREADS} ${HEADER}/${SAMPLE}_aln_pe_sorted.bam - | \
@@ -152,14 +153,14 @@ samtools sort -T $TMPDIR -@ ${THREADS} - -o ${HEADER}/${SAMPLE}_aln_pe_fm_sorted
 echo "Adding read group information to ${SAMPLE}"
 
 java -jar $PICARD AddOrReplaceReadGroups \
-    -INPUT ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
-    -OUTPUT ${HEADER}/${SAMPLE}_aln_pe_fm_rg_sorted.bam \
-    -RGSM ${SAMPLE} \
-    -RGID $RGID \
-    -RGLB $RGLB \
-    -RGPL $RPGL \
-    -RGPU $RGPU \
-    -VALIDATION_STRINGENCY LENIENT # adds read groups
+    I=${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
+    O=${HEADER}/${SAMPLE}_aln_pe_fm_rg_sorted.bam \
+    RGSM=${SAMPLE} \
+    RGID=${SEQID}} \
+    RGLB=$RGLB \
+    RGPL=$RPGL \
+    RGPU=$RGPU \
+    VALIDATION_STRINGENCY=LENIENT # adds read groups
 
 echo "End Alignment"
 
@@ -167,13 +168,13 @@ echo "End Alignment"
 echo "Marking and removing duplicate reads"
 
 java -jar $PICARD MarkDuplicates \
-     -INPUT ${HEADER}/${SAMPLE}_aln_pe_fm_sorted.bam \
-     -OUTPUT ${HEADER}/${SAMPLE}_markdup.bam \
-     -METRICS_FILE ${HEADER}/${SAMPLE}_dup_metrics.txt \
-     -ASSUME_SORTED true \
-     -REMOVE_DUPLICATES true \
-     -VALIDATION_STRINGENCY LENIENT \
-     -TMP_DIR $TMPDIR
+     I=${HEADER}/${SAMPLE}_aln_pe_fm_rg_sorted.bam \
+     O=${HEADER}/${SAMPLE}_markdup.bam \
+     METRICS_FILE=${HEADER}/${SAMPLE}_dup_metrics.txt \
+     ASSUME_SORTED=true \
+     REMOVE_DUPLICATES=true \
+     VALIDATION_STRINGENCY=LENIENT \
+     TMP_DIR=$TMPDIR
 
 echo "End Marking and removing duplicate reads"
 
